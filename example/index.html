@@ -1,0 +1,100 @@
+<html>
+    <head>
+
+        <script src="../threaded.js"></script>
+
+        <style>
+        body {
+            font-family: monospace;
+        }
+        ul#log {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        ul#log>li {
+            padding: 3px 0;
+        }
+        ul#log>li:nth-child(odd) {
+            background-color: #fafafa;
+        }
+        </style>
+
+    </head>
+    <body>
+
+        <input type="number" id="threads" placeholder="default"></input>
+        <input type="number" id="numbers" value=999></input>
+        <input type="submit" id="go">
+
+        <br />
+
+        <ul id="log"></ul>
+
+        <script>
+
+            // DOM elements
+            var el = {
+                threads: document.getElementById("threads"),
+                numbers: document.getElementById("numbers"),
+                submit:  document.getElementById("go")
+            }
+
+            // click event
+            el.submit.addEventListener( 'click', go, false );
+
+            function go (e) {
+
+                e.preventDefault();
+
+                // get input
+                var threads = el.threads.value;
+                var numbers = el.numbers.value;
+
+                // threaded library
+                var timeBeforeLoad = new Date();
+                var t = new Threaded('worker.js', threads);
+                var timeAfterLoad = new Date();
+                console.log("time to load "+t.poolSize+" workers: " + (timeAfterLoad.getTime() - timeBeforeLoad.getTime() ) / 1000);
+
+                // make array of numbers
+                var input = Array.apply(null, {length: numbers}).map(Number.call, Number);
+
+                // begin
+                var timeBeforeProcess = new Date();
+                t.process( input, function(e){
+
+                    var timeAfterProcess = new Date();
+                    console.log("time to process: " + (timeAfterProcess.getTime() - timeBeforeProcess.getTime() ) / 1000);
+
+                    // sort and output
+                    console.log( "Primes found: " + 
+                        e.sort((a,b) => a.input - b.input )
+                        .filter( x => x.output === true )
+                        .map( x => x.input )
+                        .length
+                    )
+                });
+
+            }
+
+            // extend console.log to print to HTML
+            (function () {
+                var old = console.log;
+                var logger = document.getElementById('log');
+                console.log = function (message) {
+                    old.apply( this, arguments ); 
+                    if (typeof message == 'object') {
+                        message = (JSON && JSON.stringify ? JSON.stringify(message) : message);
+                    } else if (message && message.replace) {
+                        message = message.replace(/\n/g,'<br/>');
+                    }
+                    var node = document.createElement("li");
+                    node.innerHTML = message;
+                    logger.appendChild(node);
+                }
+            })();
+
+        </script>
+    </body>
+</html>
