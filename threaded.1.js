@@ -9,7 +9,7 @@ var Threaded  = (function( workerScript, poolSize ) {
     var pub = {};
 
     // default to number of cores available
-    pub.poolSize = parseInt( poolSize = poolSize || navigator.hardwareConcurrency || 2);
+    pub.poolSize = poolSize = poolSize || navigator.hardwareConcurrency || 2;
 
     // queue of jobs
     self.queue = [];
@@ -24,46 +24,48 @@ var Threaded  = (function( workerScript, poolSize ) {
     if ($$threads && $$threads.length)
         $$threads.forEach( t => t && t.worker && t.worker.terminate() )
 
-    // create workers
-    $$threads = self.workers = [...new Array( poolSize )];
-    self.workers.forEach(function(worker, index, array) {
+    // all worker
+    self.workers = new Array(poolSize);
+    $$threads = self.workers;
+
+    for (var i = 0; i < poolSize; i++) {
     
-        var worker = array[index] = {
-            id: index,
+        var me = {
+            id: i,
             worker: new Worker( workerScript ),
             job: null
         }
 
+        self.workers[i] = me;
+
         // when a worker responds with a message
-        worker.worker.onmessage = function(e) {
-            
+        me.worker.onmessage = function(e) {
+console.log('returned', me.id);
             // save results
             self.results.push({
-                input: worker.job.data,
+                input: me.job.data,
                 output: e.data
             });
 
             // keep moving
-            worker.work();
+            me.work();
         };
 
         // check for work
-        worker.work = function() {
+        me.work = function() {
 
             if (self.queue.length) {
 
                 // get next job
-                worker.job = self.queue.pop();
+                me.job = self.queue.pop();
                 
                 // process
-                worker.worker.postMessage( worker.job.data );
-
-                self.progress()
+                me.worker.postMessage( me.job.data );
 
             } else {
 
                 // no work, go back to idle
-                self.idle.push(worker);
+                self.idle.push(me);
 
                 // check if all work is done
                 self.done();
@@ -72,19 +74,8 @@ var Threaded  = (function( workerScript, poolSize ) {
         }
 
         // start idle
-        self.idle.push( worker );
+        self.idle.push( me );
 
-        // return worker;
-
-    }, this);
-
-    //
-    self.progress = function () {
-        
-        if (!self.progresscb)
-            return;
-
-        self.progresscb( 1 - (self.queue.length / self.queue.originallength ) );
     }
 
     // check if there is no work and no working threads
@@ -103,21 +94,18 @@ var Threaded  = (function( workerScript, poolSize ) {
     }
 
     // batches a bunch of jobs with a common callback
-    pub.process = function(dataArray, callback, progresscb) {
+    pub.process = function(dataArray, callback) {
 
         if (self.queue.length)
             throw new Error("still processing");
         
         self.callback = callback;
-        self.progresscb = progresscb;
         
         for (var i = 0; i < dataArray.length; i++) {
             self.queue.push({
                 data: dataArray[i]
             });
         }
-
-        self.queue.originallength = self.queue.length;
 
         while (self.queue.length && self.idle.length) {
             self.idle.pop().work();

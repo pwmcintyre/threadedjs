@@ -3,5 +3,11 @@
 importScripts("http://www.javascripter.net/faq/primefactors.txt");
 
 onmessage = function(e) {
-    postMessage( isPrime( e.data ) );
+    // console.log(e.data);
+    postMessage( e.data.map(function(x) {
+        return {
+            input: x,
+            output: isPrime( x )
+        }
+    } ) );
 }

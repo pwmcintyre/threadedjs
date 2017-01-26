@@ -24,8 +24,9 @@
     <body>
 
         <input type="number" id="threads" placeholder="default"></input>
-        <input type="number" id="numbers" value=999></input>
+        <input type="number" id="numbers" value=999999></input>
         <input type="submit" id="go">
+        <input type="number" id="progress" disabled></input>
 
         <br />
 
@@ -37,6 +38,7 @@
             var el = {
                 threads: document.getElementById("threads"),
                 numbers: document.getElementById("numbers"),
+                progress: document.getElementById("progress"),
                 submit:  document.getElementById("go")
             }
 
@@ -57,8 +59,17 @@
                 var timeAfterLoad = new Date();
                 console.log("time to load "+t.poolSize+" workers: " + (timeAfterLoad.getTime() - timeBeforeLoad.getTime() ) / 1000);
 
-                // make array of numbers
-                var input = Array.apply(null, {length: numbers}).map(Number.call, Number);
+                // split into chunks
+                var chunkSize = 10000;
+                var chunks = Math.ceil( numbers / chunkSize );
+                var input = [];
+                for (var i = 0; i < chunks; i++) {
+                    input.push([]);
+                }
+                for (var i = 0; i < numbers; i++) {
+                    input[i % input.length].push(i);
+                }
+                console.log("Split into chunks: " + chunks);
 
                 // begin
                 var timeBeforeProcess = new Date();
@@ -68,12 +79,15 @@
                     console.log("time to process: " + (timeAfterProcess.getTime() - timeBeforeProcess.getTime() ) / 1000);
 
                     // sort and output
+                    var a =  ([].concat(...(e.map(x => x.output))))
                     console.log( "Primes found: " + 
-                        e.sort((a,b) => a.input - b.input )
+                       a.sort((a,b) => a.input - b.input )
                         .filter( x => x.output === true )
                         .map( x => x.input )
                         .length
                     )
+                }, function (progress) {
+                    el.progress.value = progress;
                 });
 
             }
