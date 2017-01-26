@@ -25,7 +25,7 @@ var Threaded  = (function( workerScript, poolSize ) {
         $$threads.forEach( t => t && t.worker && t.worker.terminate() )
 
     // create workers
-    $$threads = self.workers = [...new Array( poolSize )];
+    $$threads = self.workers = [...new Array( pub.poolSize )];
     self.workers.forEach(function(worker, index, array) {
     
         var worker = array[index] = {
