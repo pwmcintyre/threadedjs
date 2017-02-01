@@ -1,0 +1,140 @@
+<html>
+    <head>
+
+        <script src="../../threaded.js"></script>
+
+        <style>
+	    body, html, canvas { width: 100%; height: 100%; padding: 0; margin: 0; }
+        body {
+            font-family: monospace;
+        }
+        ul.log {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        ul.log>li {
+            padding: 3px 0;
+        }
+        ul.log>li:nth-child(odd) {
+            background-color: #fafafa;
+        }
+        #stuff {
+            height: 500px;
+        }
+
+        </style>
+
+    </head>
+    <body>
+        <div id="inputs">
+            <input type="number" id="threads" placeholder="default"></input>
+            <input type="number" id="numbers" value=2></input>
+            <input type="submit" id="go">
+            <input type="number" id="progress" disabled></input>
+        </div>
+        <div id="stuff">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div id="log">
+            <ul class="log"></ul>
+        </div>
+
+        <script>
+
+            // DOM elements
+            var el = {
+                threads: document.getElementById("threads"),
+                numbers: document.getElementById("numbers"),
+                progress: document.getElementById("progress"),
+                submit:  document.getElementById("go"),
+                canvas:  document.getElementById("canvas")
+            }
+
+            // click event
+            el.submit.addEventListener( 'click', go, false );
+
+            var z = 0;
+            var ctx = el.canvas.getContext('2d');
+
+            // threaded library
+            var threads = el.threads.value;
+            var timeBeforeLoad = new Date();
+            var t = new Threaded('worker.js', threads);
+            var timeAfterLoad = new Date();
+            console.log("time to load "+t.poolSize+" workers: " + (timeAfterLoad.getTime() - timeBeforeLoad.getTime() ) / 1000);
+            
+            function go (e) {
+
+                e && e.preventDefault && e.preventDefault();
+
+                // get input
+                var numbers = el.numbers.value;
+
+                el.canvas.width = el.canvas.clientWidth;
+                el.canvas.height = el.canvas.clientHeight;
+
+                var threads = t.poolSize;
+                var input = [];
+                var chunkSize = Math.round( el.canvas.height / threads / numbers );
+                var a = el.canvas.height;
+                while (a > 0) {
+                    a -= chunkSize;
+                    input.push(
+                        {
+                            order: input.length,
+                            x: 0,
+                            y: Math.max(0, a),
+                            width: el.canvas.width,
+                            height: chunkSize,
+                            z: z,
+                            diffuse: 50
+                        }
+                    );
+                }
+
+                // begin
+                var timeBeforeProcess = new Date();
+                t.process( input, function(e){
+
+                    var timeAfterProcess = new Date();
+                    console.log("time to process: " + (timeAfterProcess.getTime() - timeBeforeProcess.getTime() ) / 1000);
+
+                    z += 0.05;
+                      window.requestAnimationFrame( go );
+
+                    // sort and output
+                    e.forEach(function(a, i, array) {
+                        var pixels = Uint8ClampedArray.from(a.output);
+                        var image = new ImageData( pixels, a.input.width, a.input.height );
+                        setTimeout(function(){
+                            ctx.putImageData( image, a.input.x, a.input.y );
+                        },0);
+                    });
+
+                }, function (progress) {
+                    el.progress.value = progress;
+                });
+
+            }
+
+            // extend console.log to print to HTML
+            (function () {
+                var old = console.log;
+                var logger = document.getElementById('log');
+                console.log = function (message) {
+                    old.apply( this, arguments ); 
+                    if (typeof message == 'object') {
+                        message = (JSON && JSON.stringify ? JSON.stringify(message) : message);
+                    } else if (message && message.replace) {
+                        message = message.replace(/\n/g,'<br/>');
+                    }
+                    var node = document.createElement("li");
+                    node.innerHTML = message;
+                    logger.appendChild(node);
+                }
+            })();
+
+        </script>
+    </body>
+</html>

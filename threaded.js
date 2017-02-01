@@ -119,6 +119,8 @@ var Threaded  = (function( workerScript, poolSize ) {
 
         self.queue.originallength = self.queue.length;
 
+        self.progress();
+        
         while (self.queue.length && self.idle.length) {
             self.idle.pop().work();
         }
